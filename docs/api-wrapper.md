@@ -48,7 +48,7 @@ export const PATCH = apiWrapper(
 | `cache` | `{ ttlMs, keyGenerator?, successOnly? }` | Response caching for GET requests |
 | `timeout` | `number` | Request timeout in ms |
 | `retry` | `{ attempts, delayMs?, retryOn?, shouldRetry? }` | Retry with exponential backoff |
-| `companyScoped` | `boolean` | Requires companyId for multi-tenant isolation |
+| `tenantScoped` | `boolean` | Requires valid tenant via `auth.isTenantValid()` |
 | `audit` | `boolean` | Logs security events (who did what) |
 | `middleware` | `Function[]` | Custom middleware chain |
 
@@ -200,11 +200,23 @@ export const GET = apiWrapper(handler, {
 });
 ```
 
-## Company Scoping (Multi-Tenant)
+## Tenant Scoping (Multi-Tenant)
 
-Requires `companyId` on authenticated user:
+Requires valid tenant context via `isTenantValid` in your auth adapter:
 
 ```typescript
+// In your auth adapter
+const authAdapter = defineAuthAdapter<AppUser>({
+  verify(ctx) { /* ... */ },
+  hasRole(user, roles) { /* ... */ },
+
+  // Define your tenant validation logic
+  isTenantValid(user) {
+    return !!user.companyId; // or organizationId, workspaceId, etc.
+  },
+});
+
+// In your route
 export const GET = apiWrapper(async (ctx) => {
   const items = await prisma.template.findMany({
     where: { companyId: ctx.user.companyId },
@@ -212,7 +224,7 @@ export const GET = apiWrapper(async (ctx) => {
   return ApiResponse.success(items);
 }, {
   auth: [],
-  companyScoped: true, // throws 403 if no companyId
+  tenantScoped: true, // throws 403 if isTenantValid returns false
 });
 ```
 

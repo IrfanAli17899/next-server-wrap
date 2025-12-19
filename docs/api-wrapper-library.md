@@ -177,7 +177,7 @@ export const handler = apiWrapper(fn, {
   },
 
   // Multi-tenant isolation
-  companyScoped: true,
+  tenantScoped: true,
 
   // Audit logging
   audit: true,

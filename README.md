@@ -179,8 +179,8 @@ apiWrapper(handler, {
     shouldRetry: (error, attempt) => true,
   },
 
-  // Multi-tenant
-  companyScoped: true,
+  // Multi-tenant (requires auth.isTenantValid)
+  tenantScoped: true,
 
   // Audit logging
   audit: true,
@@ -317,6 +317,10 @@ const authAdapter = defineAuthAdapter<MyUser>({
   },
   hasRole(user, roles) {
     return roles.length === 0 || roles.includes(user.role);
+  },
+  // Optional: for tenantScoped routes
+  isTenantValid(user) {
+    return !!user.companyId;
   },
 });
 ```

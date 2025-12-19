@@ -115,7 +115,7 @@ export interface WrapperOptions<
   auth?: string[];
   validation?: ValidationConfig<TParams, TQuery, TBody>;
   rateLimit?: RateLimitConfig | false;
-  companyScoped?: boolean;
+  tenantScoped?: boolean;
   audit?: boolean;
   middleware?: MiddlewareFunction<BaseUser>[];
   /** Timeout in milliseconds. Handler will be aborted if exceeded */
@@ -198,6 +198,8 @@ export interface AuthAdapter<TUser extends BaseUser = BaseUser> {
   verify(ctx: AuthRequestContext): Promise<TUser | null>;
   /** Check if user has required roles */
   hasRole(user: TUser, roles: string[]): boolean;
+  /** Check if user has valid tenant context. Called when tenantScoped: true */
+  isTenantValid?(user: TUser): boolean;
 }
 
 export interface CacheAdapter {

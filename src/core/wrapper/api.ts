@@ -53,7 +53,7 @@ export function createApiWrapper<TUser extends BaseUser = BaseUser>(
           auth,
           validation,
           rateLimit,
-          companyScoped,
+          tenantScoped,
           audit,
           middleware = [],
           timeout,
@@ -138,9 +138,14 @@ export function createApiWrapper<TUser extends BaseUser = BaseUser>(
         // 4. Build Context
         const ctx = await buildApiContext(clonedReq, routeCtx, validation, user, requestId);
 
-        // 5. Company Scoping
-        if (companyScoped && !(user as Record<string, unknown>).companyId) {
-          throw ApiResponse.forbidden('Company context required');
+        // 5. Tenant Scoping
+        if (tenantScoped) {
+          if (!adapters.auth?.isTenantValid) {
+            throw new Error('isTenantValid must be defined in auth adapter when tenantScoped is true');
+          }
+          if (!adapters.auth.isTenantValid(user)) {
+            throw ApiResponse.forbidden('Tenant context required');
+          }
         }
 
         // 6. Execute Handler
