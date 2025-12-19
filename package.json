@@ -1,6 +1,6 @@
 {
   "name": "next-server-wrap",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A minimal, type-safe wrapper for Next.js API routes and Server Actions",
   "type": "module",
   "main": "./dist/index.cjs",

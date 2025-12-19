@@ -60,8 +60,44 @@ export interface AuditEvent<TUser extends BaseUser = BaseUser> {
   userAgent?: string;
   timestamp: Date;
   durationMs?: number;
+  status?: number;
+  success?: boolean;
+  errorCode?: string;
   meta?: Record<string, unknown>;
 }
+
+// ============================================================================
+// Error Context (for audit logging failures)
+// ============================================================================
+
+export interface ErrorContext {
+  requestId: string;
+  method: string;
+  path: string;
+  ip: string;
+  userAgent: string;
+  startTime: number;
+  user?: BaseUser;
+  audit?: boolean;
+}
+
+// ============================================================================
+// Sensitive Fields for Redaction
+// ============================================================================
+
+export const SENSITIVE_FIELDS = [
+  'password',
+  'token',
+  'secret',
+  'apiKey',
+  'api_key',
+  'authorization',
+  'cookie',
+  'creditCard',
+  'credit_card',
+  'ssn',
+  'cvv',
+] as const;
 
 // ============================================================================
 // Validation Types
@@ -198,8 +234,12 @@ export interface AuthAdapter<TUser extends BaseUser = BaseUser> {
   verify(ctx: AuthRequestContext): Promise<TUser | null>;
   /** Check if user has required roles */
   hasRole(user: TUser, roles: string[]): boolean;
-  /** Check if user has valid tenant context. Called when tenantScoped: true */
-  isTenantValid?(user: TUser): boolean;
+  /**
+   * Check if user has valid tenant context. Called when tenantScoped: true.
+   * @param user - The authenticated user
+   * @param ctx - Request context with headers/cookies (use to get tenant ID from header/cookie)
+   */
+  isTenantValid?(user: TUser, ctx: AuthRequestContext): boolean | Promise<boolean>;
 }
 
 export interface CacheAdapter {

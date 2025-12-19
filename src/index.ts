@@ -35,6 +35,10 @@ export {
   type ResponseTransformers,
   type SuccessResponseData,
   type ErrorResponseData,
+  type ErrorContext,
+  SENSITIVE_FIELDS,
+  redact,
+  redactHeaders,
 } from './core/index.js';
 
 // Adapter helpers

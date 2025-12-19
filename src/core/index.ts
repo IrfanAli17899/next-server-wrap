@@ -32,4 +32,7 @@ export type {
   ResponseTransformers,
   SuccessResponseData,
   ErrorResponseData,
+  ErrorContext,
 } from './types.js';
+export { SENSITIVE_FIELDS } from './types.js';
+export { redact, redactHeaders } from './utils/index.js';

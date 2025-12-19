@@ -77,6 +77,30 @@ export class ApiResponse {
     return new Response(null, { status: 204 });
   }
 
+  /**
+   * Create a custom Response with full control over status, headers, etc.
+   */
+  static response<T>(
+    data: T,
+    options: {
+      status?: number;
+      headers?: Record<string, string>;
+      transformers?: ResponseTransformers;
+    } = {}
+  ): Response {
+    const { status = 200, headers = {}, transformers } = options;
+    const transform = transformers?.success || globalTransformers.success;
+    const body = transform(data, status);
+
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+    });
+  }
+
   // ============================================================================
   // Error Responses (throwable)
   // ============================================================================
@@ -122,6 +146,18 @@ export class ApiResponse {
 
   static internalError(message: string = 'Internal server error'): ApiError {
     return new ApiError(message, 500, 'INTERNAL_ERROR');
+  }
+
+  static badGateway(message: string = 'Bad gateway'): ApiError {
+    return new ApiError(message, 502, 'BAD_GATEWAY');
+  }
+
+  static serviceUnavailable(message: string = 'Service temporarily unavailable'): ApiError {
+    return new ApiError(message, 503, 'SERVICE_UNAVAILABLE');
+  }
+
+  static gatewayTimeout(message: string = 'Gateway timeout'): ApiError {
+    return new ApiError(message, 504, 'GATEWAY_TIMEOUT');
   }
 }
 
