@@ -1,0 +1,66 @@
+{
+  "name": "next-server-wrap",
+  "version": "0.1.0",
+  "description": "A minimal, type-safe wrapper for Next.js API routes and Server Actions",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "nextjs",
+    "api",
+    "wrapper",
+    "validation",
+    "zod",
+    "rate-limiting",
+    "authentication",
+    "caching",
+    "timeout",
+    "retry",
+    "server-actions",
+    "typescript"
+  ],
+  "author": "irfanali.17899@gmail.com",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/irfanali17899/next-server-wrap.git"
+  },
+  "homepage": "https://github.com/irfanali17899/next-server-wrap#readme",
+  "bugs": {
+    "url": "https://github.com/irfanali17899/next-server-wrap/issues"
+  },
+  "peerDependencies": {
+    "zod": ">=3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16",
+    "zod": "^4.2.1"
+  },
+  "packageManager": "pnpm@10.25.0"
+}
