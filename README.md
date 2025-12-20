@@ -24,6 +24,8 @@ pnpm add next-server-wrap
 
 **Peer dependency:** `zod >= 3.0.0`
 
+**Example project:** [next-server-wrap-example](https://github.com/irfanali17899/next-server-wrap-example) - Full example with NextAuth, Prisma, and server actions/APIs.
+
 ## Quick Start
 
 ### 1. Create your wrapper instance
@@ -138,19 +140,30 @@ export const GET = apiWrapper(
 
 ### 3. Use in Server Actions
 
+Server actions use an **envelope pattern** - they return `{ success: true, data }` or `{ success: false, error }` instead of throwing errors. This is required because Next.js swallows thrown errors in production.
+
 ```typescript
 'use server';
 import { z } from 'zod';
 import { actionWrapper } from '@/lib/api';
+import { ActionResponse } from 'next-server-wrap';
 
 const schema = z.object({ id: z.string(), name: z.string() });
 
 export const updateUser = actionWrapper(
   async (ctx) => {
-    return db.user.update({
+    const user = await db.user.findUnique({ where: { id: ctx.parsedBody.id } });
+
+    if (!user) {
+      throw ActionResponse.notFound('User not found');
+    }
+
+    const updated = await db.user.update({
       where: { id: ctx.parsedBody.id },
       data: { name: ctx.parsedBody.name },
     });
+
+    return ActionResponse.success(updated);
   },
   { auth: [], validation: { body: schema }, timeout: 5000 }
 );
@@ -158,7 +171,8 @@ export const updateUser = actionWrapper(
 // With caching
 export const getProducts = actionWrapper(
   async (ctx) => {
-    return db.product.findMany({ take: ctx.parsedBody.limit });
+    const products = await db.product.findMany({ take: ctx.parsedBody.limit });
+    return ActionResponse.success(products);
   },
   {
     validation: { body: z.object({ limit: z.number() }) },
@@ -168,6 +182,21 @@ export const getProducts = actionWrapper(
     },
   }
 );
+```
+
+**Consuming action results:**
+
+```typescript
+const result = await updateUser({ id: '123', name: 'John' });
+
+if (result.success) {
+  console.log(result.data); // User object
+} else {
+  console.log(result.error.message); // Error message
+  console.log(result.error.code);    // Error code
+  console.log(result.error.status);  // HTTP status
+  console.log(result.error.errors);  // Validation errors (if any)
+}
 ```
 
 ---
@@ -301,6 +330,46 @@ throw ApiResponse.internalError('msg')     // 500
 throw ApiResponse.badGateway('msg')        // 502
 throw ApiResponse.serviceUnavailable('msg') // 503
 throw ApiResponse.gatewayTimeout('msg')    // 504
+```
+
+---
+
+## ActionResponse (Server Actions)
+
+Server actions use `ActionResponse` which returns envelope objects instead of throwing errors.
+
+```typescript
+import { ActionResponse } from 'next-server-wrap';
+
+// Success - returns { success: true, data: T }
+return ActionResponse.success(data);
+return ActionResponse.success(data, 201);  // custom status
+return ActionResponse.created(data);       // 201
+return ActionResponse.noContent();         // 204, data is null
+
+// Errors - throw these (internally throws ApiError, caught and converted to envelope)
+throw ActionResponse.error('msg', 418, 'TEAPOT');
+throw ActionResponse.badRequest('msg');
+throw ActionResponse.unauthorized('msg');
+throw ActionResponse.forbidden('msg');
+throw ActionResponse.notFound('msg');
+throw ActionResponse.conflict('msg');
+throw ActionResponse.validationError('msg', errors);
+throw ActionResponse.tooManyRequests('msg');
+throw ActionResponse.internalError('msg');
+throw ActionResponse.badGateway('msg');
+throw ActionResponse.serviceUnavailable('msg');
+throw ActionResponse.gatewayTimeout('msg');
+```
+
+**Result types:**
+
+```typescript
+// Success result
+{ success: true, data: T }
+
+// Error result
+{ success: false, error: { message: string, code: string, status: number, errors?: ValidationError[] } }
 ```
 
 ---
