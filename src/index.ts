@@ -1,21 +1,34 @@
 // Core exports
 export {
   ApiError,
+  // Response classes
+  BaseResponse,
   ApiResponse,
-  createApiWrapper,
-  createActionWrapper,
-  type ActionAuthContextProvider,
+  ActionResponse,
+  apiErrorToActionResult,
   createErrorResponse,
+  // Transformers
   setGlobalTransformers,
   getGlobalTransformers,
   resetGlobalTransformers,
+  // Wrapper
+  createApiWrapper,
+  createActionWrapper,
+  type ActionAuthContextProvider,
+  // Types
+  type ErrorInfo,
   type ErrorCode,
   type ValidationErrorDetail,
   type SuccessResponse,
   type ErrorResponse,
+  type ActionResult,
+  type ActionSuccessResult,
+  type ActionErrorResult,
+  type ActionErrorData,
   type BaseUser,
   type RateLimitConfig,
   type CacheConfig,
+  type ActionCacheConfig,
   type RetryConfig,
   type AuditEvent,
   type ValidationConfig,

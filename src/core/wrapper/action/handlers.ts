@@ -1,11 +1,15 @@
 import type { BaseUser, LoggerAdapter } from '../../types.js';
 import { ApiError } from '../../error.js';
-import { ApiResponse } from '../../response.js';
+import {
+  ActionResponseInternal,
+  type ActionResult,
+  type ActionErrorResult,
+} from '../../response/index.js';
 
 export interface ActionResultHandlers<TResult> {
-  onRateLimited: () => never;
-  onSuccess: (result: TResult) => TResult;
-  onError: (error: unknown, requestId: string) => never;
+  onRateLimited: () => ActionErrorResult;
+  onSuccess: (result: TResult) => ActionResult<TResult>;
+  onError: (error: unknown, requestId: string) => ActionErrorResult;
 }
 
 export interface CreateActionHandlersConfig<TUser extends BaseUser> {
@@ -19,14 +23,14 @@ export function createActionResultHandlers<TResult, TUser extends BaseUser>(
 
   return {
     onRateLimited: () => {
-      throw ApiResponse.tooManyRequests();
+      return ActionResponseInternal.tooManyRequests();
     },
 
-    onSuccess: (result) => result,
+    onSuccess: (result) => ActionResponseInternal.success(result),
 
     onError: (error, requestId) => {
       if (ApiError.isApiError(error)) {
-        throw error;
+        return ActionResponseInternal.error(error.message, error.status, error.code, error.errors);
       }
 
       logger?.error(
@@ -35,7 +39,7 @@ export function createActionResultHandlers<TResult, TUser extends BaseUser>(
         { requestId }
       );
 
-      throw ApiResponse.internalError();
+      return ActionResponseInternal.internalError();
     },
   };
 }

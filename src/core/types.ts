@@ -31,6 +31,13 @@ export interface CacheConfig {
   successOnly?: boolean;
 }
 
+export interface ActionCacheConfig<TInput = unknown> {
+  /** Cache TTL in milliseconds */
+  ttlMs: number;
+  /** Custom cache key generator from input. Defaults to JSON.stringify(input) */
+  keyGenerator?: (input: TInput) => string;
+}
+
 // ============================================================================
 // Retry Types
 // ============================================================================

@@ -4,7 +4,7 @@ import {
   setGlobalTransformers,
   resetGlobalTransformers,
   createErrorResponse,
-} from '../src/core/response.js';
+} from '../src/core/response/index.js';
 
 describe('Response Transformers', () => {
   beforeEach(() => {

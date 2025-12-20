@@ -1,5 +1,5 @@
 import type { BaseUser, CacheAdapter, CacheConfig, LoggerAdapter, ResponseTransformers } from '../../types.js';
-import { ApiResponse, createErrorResponse } from '../../response.js';
+import { ApiResponse, createErrorResponse } from '../../response/index.js';
 import { ApiError } from '../../error.js';
 import {
   getCacheKey,

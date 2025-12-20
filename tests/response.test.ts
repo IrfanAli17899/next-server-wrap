@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ApiResponse } from '../src/core/response.js';
+import { ApiResponse } from '../src/core/response/index.js';
 import { ApiError } from '../src/core/error.js';
 
 describe('ApiResponse', () => {
@@ -97,11 +97,54 @@ describe('ApiResponse', () => {
       expect(error.code).toBe('INTERNAL_ERROR');
     });
 
+    it('should create badGateway error (502)', () => {
+      const error = ApiResponse.badGateway();
+
+      expect(error.status).toBe(502);
+      expect(error.code).toBe('BAD_GATEWAY');
+    });
+
+    it('should create serviceUnavailable error (503)', () => {
+      const error = ApiResponse.serviceUnavailable('Service down');
+
+      expect(error.status).toBe(503);
+      expect(error.code).toBe('SERVICE_UNAVAILABLE');
+      expect(error.message).toBe('Service down');
+    });
+
+    it('should create gatewayTimeout error (504)', () => {
+      const error = ApiResponse.gatewayTimeout();
+
+      expect(error.status).toBe(504);
+      expect(error.code).toBe('GATEWAY_TIMEOUT');
+    });
+
     it('should create custom error', () => {
       const error = ApiResponse.error('Custom error', 418, 'IM_A_TEAPOT');
 
       expect(error.status).toBe(418);
       expect(error.code).toBe('IM_A_TEAPOT');
+    });
+  });
+
+  describe('custom response', () => {
+    it('should create response with custom headers', async () => {
+      const response = ApiResponse.response({ data: 'test' }, {
+        status: 200,
+        headers: { 'X-Custom': 'header' },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('X-Custom')).toBe('header');
+      expect(response.headers.get('Content-Type')).toBe('application/json');
+    });
+
+    it('should create response with custom status', async () => {
+      const response = ApiResponse.response({ ok: true }, { status: 202 });
+
+      expect(response.status).toBe(202);
+      const body = await response.json();
+      expect(body.success).toBe(true);
     });
   });
 });

@@ -89,7 +89,24 @@ export const apiWrapper = createApiWrapper<AppUser>({
 });
 
 export const actionWrapper = createActionWrapper<AppUser>({
-  adapters: { auth: authAdapter, logger: loggerAdapter },
+  adapters: {
+    auth: authAdapter,
+    cache: cacheAdapter, // Required for action caching and rate limiting
+    logger: loggerAdapter,
+  },
+  // Required when using auth or tenantScoped in server actions
+  async getAuthContext() {
+    const { headers, cookies } = await import('next/headers');
+    const headersList = await headers();
+    const cookieStore = await cookies();
+
+    const cookieObj: Record<string, string> = {};
+    cookieStore.getAll().forEach((c) => {
+      cookieObj[c.name] = c.value;
+    });
+
+    return { headers: headersList, cookies: cookieObj };
+  },
 });
 ```
 
@@ -137,11 +154,27 @@ export const updateUser = actionWrapper(
   },
   { auth: [], validation: { body: schema }, timeout: 5000 }
 );
+
+// With caching
+export const getProducts = actionWrapper(
+  async (ctx) => {
+    return db.product.findMany({ take: ctx.parsedBody.limit });
+  },
+  {
+    validation: { body: z.object({ limit: z.number() }) },
+    cache: {
+      ttlMs: 60000, // 60 seconds
+      keyGenerator: (input) => `products:${input.limit}`,
+    },
+  }
+);
 ```
 
 ---
 
 ## Configuration Options
+
+### API Routes
 
 ```typescript
 apiWrapper(handler, {
@@ -161,7 +194,7 @@ apiWrapper(handler, {
   rateLimit: { max: 100, windowMs: 60000 },
   rateLimit: false,  // disable
 
-  // Response caching
+  // Response caching (GET only)
   cache: {
     ttlMs: 60000,
     keyGenerator: (req) => `custom:${req.url}`,
@@ -187,6 +220,27 @@ apiWrapper(handler, {
 
   // Custom middleware
   middleware: [myMiddleware],
+});
+```
+
+### Server Actions
+
+```typescript
+actionWrapper(handler, {
+  // Same options as API routes, plus:
+  auth: [],
+  validation: { body: schema },
+  rateLimit: { max: 10, windowMs: 60000 },
+  timeout: 5000,
+  retry: { attempts: 3, delayMs: 100 },
+  tenantScoped: true,
+  audit: true,
+
+  // Action caching (caches by input)
+  cache: {
+    ttlMs: 60000,
+    keyGenerator: (input) => `key:${input.id}`, // optional
+  },
 });
 ```
 
@@ -224,10 +278,18 @@ import { ApiResponse } from 'next-server-wrap';
 
 // Success (return these)
 ApiResponse.success(data)           // 200
+ApiResponse.success(data, 201)      // custom status
 ApiResponse.created(data)           // 201
 ApiResponse.noContent()             // 204
 
+// Custom response with headers
+ApiResponse.response(data, {
+  status: 202,
+  headers: { 'X-Custom': 'value' },
+})
+
 // Errors (throw these)
+throw ApiResponse.error('msg', 418, 'TEAPOT')  // custom error
 throw ApiResponse.badRequest('msg')        // 400
 throw ApiResponse.unauthorized('msg')      // 401
 throw ApiResponse.forbidden('msg')         // 403
@@ -236,6 +298,9 @@ throw ApiResponse.conflict('msg')          // 409
 throw ApiResponse.validationError('msg', errors) // 422
 throw ApiResponse.tooManyRequests('msg')   // 429
 throw ApiResponse.internalError('msg')     // 500
+throw ApiResponse.badGateway('msg')        // 502
+throw ApiResponse.serviceUnavailable('msg') // 503
+throw ApiResponse.gatewayTimeout('msg')    // 504
 ```
 
 ---

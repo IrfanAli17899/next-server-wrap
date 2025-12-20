@@ -1,4 +1,4 @@
-import { ApiResponse } from '../../response.js';
+import { ApiResponse } from '../../response/index.js';
 
 export function getClientIp(req: Request): string {
   const forwardedFor = req.headers.get('x-forwarded-for');

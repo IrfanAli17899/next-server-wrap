@@ -1,6 +1,6 @@
 import type { LoggerAdapter, BaseUser, ResponseTransformers, ErrorContext } from '../types.js';
 import { ApiError } from '../error.js';
-import { ApiResponse, createErrorResponse, getGlobalTransformers } from '../response.js';
+import { ApiResponse, createErrorResponse, getGlobalTransformers } from '../response/index.js';
 
 export function getEffectiveTransformers(
   instanceTransformers?: ResponseTransformers

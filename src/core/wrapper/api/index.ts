@@ -8,7 +8,7 @@ import type {
   BaseUser,
   ResponseTransformers,
 } from '../../types.js';
-import { ApiResponse } from '../../response.js';
+import { ApiResponse } from '../../response/index.js';
 import { buildAuthContext } from '../../utils/auth-context.js';
 import { getEffectiveTransformers } from '../error-handler.js';
 import { generateRequestId, runPipeline } from '../pipeline.js';

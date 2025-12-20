@@ -10,7 +10,7 @@ import type {
   ValidationConfig,
 } from '../types.js';
 import { ApiError } from '../error.js';
-import { ApiResponse } from '../response.js';
+import { ApiResponse } from '../response/index.js';
 import {
   checkRateLimit,
   buildRateLimitKey,

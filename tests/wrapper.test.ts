@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { createApiWrapper, createActionWrapper } from '../src/core/wrapper/index.js';
-import { ApiResponse } from '../src/core/response.js';
+import { ApiResponse } from '../src/core/response/index.js';
 import type {
   AuthAdapter,
   LoggerAdapter,
@@ -663,7 +663,10 @@ describe('createActionWrapper', () => {
 
     const result = await action({ value: 5 });
 
-    expect(result.doubled).toBe(10);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.doubled).toBe(10);
+    }
   });
 
   it('should include requestId in context', async () => {
@@ -683,7 +686,7 @@ describe('createActionWrapper', () => {
     expect(capturedRequestId).toBeTruthy();
   });
 
-  it('should throw on validation error', async () => {
+  it('should return error on validation failure', async () => {
     const actionWrapper = createActionWrapper({ adapters: {} });
 
     const action = actionWrapper(async (ctx) => ctx.parsedBody, {
@@ -692,7 +695,12 @@ describe('createActionWrapper', () => {
       },
     });
 
-    await expect(action({ value: 'not a number' })).rejects.toThrow();
+    const result = await action({ value: 'not a number' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('VALIDATION_ERROR');
+      expect(result.error.status).toBe(422);
+    }
   });
 
   it('should require getAuthContext when auth is used', async () => {
@@ -705,9 +713,13 @@ describe('createActionWrapper', () => {
       auth: [],
     });
 
-    await expect(action({})).rejects.toThrow(
-      'getAuthContext must be provided to use auth in server actions'
-    );
+    // Config error is caught and wrapped as internal error
+    const result = await action({});
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.status).toBe(500);
+      expect(result.error.code).toBe('INTERNAL_ERROR');
+    }
   });
 
   it('should use getAuthContext for server action auth', async () => {
@@ -734,7 +746,10 @@ describe('createActionWrapper', () => {
     });
 
     const result = await action({});
-    expect(result.userId).toBe('user-from-action');
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.userId).toBe('user-from-action');
+    }
   });
 
   it('should timeout slow actions', async () => {
@@ -748,10 +763,12 @@ describe('createActionWrapper', () => {
       { timeout: 50 }
     );
 
-    await expect(action({})).rejects.toMatchObject({
-      status: 408,
-      code: 'TIMEOUT',
-    });
+    const result = await action({});
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.status).toBe(408);
+      expect(result.error.code).toBe('TIMEOUT');
+    }
   });
 
   it('should retry failed actions', async () => {
@@ -771,7 +788,118 @@ describe('createActionWrapper', () => {
 
     const result = await action({});
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ok).toBe(true);
+    }
     expect(attempts).toBe(2);
+  });
+
+  describe('action caching', () => {
+    it('should cache action results', async () => {
+      const cache = createMockCacheAdapter();
+      const actionWrapper = createActionWrapper({ adapters: { cache } });
+
+      let callCount = 0;
+      const action = actionWrapper(
+        async ({ parsedBody }) => {
+          callCount++;
+          return { count: callCount, input: parsedBody.value };
+        },
+        {
+          validation: { body: z.object({ value: z.number() }) },
+          cache: { ttlMs: 60000 },
+        }
+      );
+
+      // First call - cache miss
+      const result1 = await action({ value: 5 });
+      expect(result1.success).toBe(true);
+      if (result1.success) {
+        expect(result1.data.count).toBe(1);
+      }
+
+      // Second call with same input - cache hit
+      const result2 = await action({ value: 5 });
+      expect(result2.success).toBe(true);
+      if (result2.success) {
+        expect(result2.data.count).toBe(1); // Same count, from cache
+      }
+
+      // Handler only called once
+      expect(callCount).toBe(1);
+    });
+
+    it('should use different cache keys for different inputs', async () => {
+      const cache = createMockCacheAdapter();
+      const actionWrapper = createActionWrapper({ adapters: { cache } });
+
+      let callCount = 0;
+      const action = actionWrapper(
+        async ({ parsedBody }) => {
+          callCount++;
+          return { count: callCount, input: parsedBody.value };
+        },
+        {
+          validation: { body: z.object({ value: z.number() }) },
+          cache: { ttlMs: 60000 },
+        }
+      );
+
+      const result1 = await action({ value: 5 });
+      const result2 = await action({ value: 10 });
+
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+      if (result1.success && result2.success) {
+        expect(result1.data.count).toBe(1);
+        expect(result2.data.count).toBe(2);
+      }
+      expect(callCount).toBe(2);
+    });
+
+    it('should use custom cache key generator', async () => {
+      const cache = createMockCacheAdapter();
+      const actionWrapper = createActionWrapper({ adapters: { cache } });
+
+      const action = actionWrapper(
+        async () => ({ ok: true }),
+        {
+          validation: { body: z.object({ id: z.string() }) },
+          cache: {
+            ttlMs: 60000,
+            keyGenerator: (input) => `custom:${input.id}`,
+          },
+        }
+      );
+
+      await action({ id: 'test-123' });
+
+      // Check that cache was set with custom key
+      expect(cache.set).toHaveBeenCalledWith(
+        expect.stringContaining('custom:test-123'),
+        expect.any(Object),
+        60000
+      );
+    });
+
+    it('should not cache when no cache adapter', async () => {
+      const actionWrapper = createActionWrapper({ adapters: {} });
+
+      let callCount = 0;
+      const action = actionWrapper(
+        async () => {
+          callCount++;
+          return { count: callCount };
+        },
+        { cache: { ttlMs: 60000 } }
+      );
+
+      await action({});
+      await action({});
+
+      // Called twice without cache
+      expect(callCount).toBe(2);
+    });
   });
 });
